@@ -39,3 +39,10 @@ jobs:
         with:
           name: coverage-report
           path: BPCalculator.Tests/TestResults/**/coverage.cobertura.xml
+      
+      - name: Show the coverage
+        run: |
+          file=$(find BPCalculator.Tests/TestResults -name "coverage.cobertura.xml" -print -quit)
+          cat "$file" 
+          coverage=$(grep -o 'line-rate="[0-9.]*"' "$file" | head -n 1 | cut -d '"' -f2)
+          echo $coverage
