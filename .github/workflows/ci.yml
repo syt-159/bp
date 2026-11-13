@@ -45,3 +45,5 @@ jobs:
           file=$(find BPCalculator.Tests/TestResults -name "coverage.cobertura.xml" -print -quit)
           coverage=$(grep -o 'line-rate="[0-9.]*"' "$file" | head -n 1 | cut -d '"' -f2)
           echo $coverage
+          awk -v rate="$coverage" 'BEGIN { exit !(rate >= 0.8) }'
+          echo $?
