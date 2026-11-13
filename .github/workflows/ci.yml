@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+      
+      - name: setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      
+      - name: Restore dependencies
+        run: dotnet restore BPCalculator.sln 
+      
+      - name: Build application
+        run: dotnet build BPCalculator.sln --no-restore
+
+      # - name: Run tests
+      #   run: dotnet test BPCalculator.Tests/BPCalculator.Tests.csproj --no-build
+      
+      - name: Run tests and collect coverage
+        run: dotnet test BPCalculator.Tests/BPCalculator.Tests.csproj --no-build --collect:"XPlat Code Coverage"
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: BPCalculator.Tests/TestResults/**/coverage.cobertura.xml
