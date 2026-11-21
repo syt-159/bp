@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net;
 using Xunit;
-
 namespace BPCalculator.Tests;
 
 public class IntegrationTests
