@@ -39,7 +39,7 @@ jobs:
             -p:NuGetAudit=true \
             -p:NuGetAuditMode=all \
             -p:NuGetAuditLevel=high \
-            -p:WarningsAsErrors="NU1903;NU1904"
+            -p:WarningsAsErrors=NU1903%3BNU1904
       
       - name: Install SonarScanner for .NET
         run: dotnet tool install dotnet-sonarscanner --tool-path "$RUNNER_TEMP/scanner"
@@ -65,6 +65,7 @@ jobs:
         run: dotnet build BPCalculator.sln --no-restore
 
       - name: Run tests and collect coverage
+        id: tests
         run: >-
           dotnet test BPCalculator.Tests/BPCalculator.Tests.csproj
           --no-build
@@ -88,7 +89,7 @@ jobs:
           "$RUNNER_TEMP/scanner/dotnet-sonarscanner" end /d:sonar.token="$SONAR_TOKEN"
 
       - name: Show the coverage and enforce 80% threshold
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.tests.outcome == 'success' }}
         run: |
           file=$(find BPCalculator.Tests/TestResults -name "coverage.cobertura.xml" -print -quit)
           if [ -z "$file" ]; then
