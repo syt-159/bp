@@ -33,8 +33,13 @@ jobs:
           java-version: '21'
           distribution: 'zulu'
       
-      - name: Restore dependencies
-        run: dotnet restore BPCalculator.sln 
+      - name: Restore dependencies and audit NuGet packages
+        run: |
+          dotnet restore BPCalculator.sln \
+            -p:NuGetAudit=true \
+            -p:NuGetAuditMode=all \
+            -p:NuGetAuditLevel=high \
+            -p:WarningsAsErrors="NU1903;NU1904"
       
       - name: Install SonarScanner for .NET
         run: dotnet tool install dotnet-sonarscanner --tool-path "$RUNNER_TEMP/scanner"
