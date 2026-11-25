@@ -11,39 +11,85 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       
       - name: setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0.x'
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'zulu'
       
       - name: Restore dependencies
         run: dotnet restore BPCalculator.sln 
       
+      - name: Install SonarScanner for .NET
+        run: dotnet tool install dotnet-sonarscanner --tool-path "$RUNNER_TEMP/scanner"
+
+      - name: Authenticate with SonarQube Cloud
+        uses: SonarSource/sonarqube-auth-action@v1.2
+        id: auth
+
+      - name: SonarScanner Begin
+        env:
+          SONAR_TOKEN: ${{ steps.auth.outputs.sonar-token }}
+        run: |
+          "$RUNNER_TEMP/scanner/dotnet-sonarscanner" begin \
+            /k:"syt-159_bp" \
+            /o:"syt-159" \
+            /d:sonar.token="$SONAR_TOKEN" \
+            /d:sonar.cs.opencover.reportsPaths="BPCalculator.Tests/TestResults/**/coverage.opencover.xml" \
+            /d:sonar.qualitygate.wait=true \
+            /d:sonar.qualitygate.timeout=300
+
+
       - name: Build application
         run: dotnet build BPCalculator.sln --no-restore
 
-      # - name: Run tests
-      #   run: dotnet test BPCalculator.Tests/BPCalculator.Tests.csproj --no-build
-      
       - name: Run tests and collect coverage
-        run: dotnet test BPCalculator.Tests/BPCalculator.Tests.csproj --no-build --collect:"XPlat Code Coverage"
-      
-      - name: Upload test results
+        run: >-
+          dotnet test BPCalculator.Tests/BPCalculator.Tests.csproj
+          --no-build
+          --collect:"XPlat Code Coverage"
+          --results-directory BPCalculator.Tests/TestResults
+          -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura,opencover
+
+      - name: Upload coverage reports
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage-report
-          path: BPCalculator.Tests/TestResults/**/coverage.cobertura.xml
-      
-      - name: Show the coverage
+          path: |
+            BPCalculator.Tests/TestResults/**/coverage.cobertura.xml
+            BPCalculator.Tests/TestResults/**/coverage.opencover.xml
+
+      - name: SonarScanner End and Quality Gate Check
+        env:
+          SONAR_TOKEN: ${{ steps.auth.outputs.sonar-token }}
+        run: |
+          "$RUNNER_TEMP/scanner/dotnet-sonarscanner" end /d:sonar.token="$SONAR_TOKEN"
+
+      - name: Show the coverage and enforce 80% threshold
+        if: ${{ !cancelled() }}
         run: |
           file=$(find BPCalculator.Tests/TestResults -name "coverage.cobertura.xml" -print -quit)
+          if [ -z "$file" ]; then
+            echo "Coverage report not found"
+            exit 1
+          fi
           coverage=$(grep -o 'line-rate="[0-9.]*"' "$file" | head -n 1 | cut -d '"' -f2)
-          echo $coverage
+          echo "Line coverage: $coverage"
           awk -v rate="$coverage" 'BEGIN { exit !(rate >= 0.8) }'
-          echo $?
+
