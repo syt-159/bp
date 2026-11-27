@@ -27,3 +27,6 @@ resource component 'Microsoft.Insights/components@2020-02-02' = {
 
 output applicationInsightsId string = component.id
 output workspaceId string = workspace.id
+
+@secure()
+output connectionString string = component.properties.ConnectionString

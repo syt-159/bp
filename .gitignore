@@ -266,3 +266,8 @@ __pycache__/
 **/obj/
 **/TestResults/
 CoverageReport/
+
+# Deployment artifacts
+/publish/
+/publish-azure/
+/bp-app.zip
